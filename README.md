@@ -146,58 +146,59 @@ git push
 将普通聊天接口升级为具备实际AI应用能力的接口：
 
 * 多轮对话记忆
+* 面向对象Memory设计
 * 流式输出
 * SSE响应
+* Git版本管理
+
 
 ---
 
 # 1. Chat Memory（对话记忆）
 
+
 ## 问题
 
 普通API：
 
-```
 用户:
 我叫朱航
-
 ↓
-
 模型:
 收到
-```
+
 
 下一次请求：
 
-```
 我叫什么？
-```
 
-模型不知道。
+
+模型不知道之前的信息。
+
+
+原因：
+
+每次请求发送给模型的messages只有当前问题，没有历史上下文。
+
 
 ---
 
+
 ## 解决方案
 
-保存历史消息：
+保存完整历史消息：
 
-```
 system
-
 ↓
-
 user
-
 ↓
-
 assistant
-
 ↓
-
 user
-```
 
-发送完整上下文给大模型。
+
+调用大模型时，将完整聊天记录发送给模型。
+
 
 实现：
 
@@ -206,12 +207,16 @@ user
 负责：
 
 * 保存历史消息
-* 添加用户输入
+* 添加用户消息
 * 保存AI回复
+* 返回完整上下文
+
 
 ---
 
+
 # 2. Message角色理解
+
 
 大模型消息格式：
 
@@ -220,106 +225,145 @@ user
     "role":"user",
     "content":"你好"
 }
-```
-
 常见角色：
-
-## system
-
-定义AI身份：
-
+system
+定义AI身份和行为规则。
 例如：
-
-```
-你是一个专业AI助手
-```
-
----
-
-## user
-
+你是一名专业的AI助手
+作用：
+告诉模型：
+你是谁
+应该如何回答问题
+user
 用户输入：
-
-```
 介绍一下LangGraph
-```
-
----
-
-## assistant
-
+assistant
 模型回复：
+LangGraph是一个构建AI Agent的框架
+3. Memory面向对象重构
+第一版Memory
+最初使用：
+history=[]
+通过：
+add_message()
 
-```
-LangGraph是...
-```
+get_history()
+管理聊天记录。
+问题：
+所有用户共享同一个history。
+结构：
+用户A
 
----
+↓
 
-# 3. Streaming流式输出
+history
 
-## 普通返回
 
-```
+用户B
+
+↓
+
+history
+数据无法隔离。
+第二版Memory
+改造成面向对象形式：
+class ChatHistory:
+结构：
+ChatHistory对象
+
+↓
+
+自己的history列表
+代码：
+class ChatHistory:
+
+    def __init__(self):
+
+        self.history=[
+            {
+                "role":"system",
+                "content":"你是一个专业的AI助手"
+            }
+        ]
+
+
+    def add_message(self, role, content):
+
+        self.history.append(
+            {
+                "role":role,
+                "content":content
+            }
+        )
+
+
+    def get_history(self):
+
+        return self.history
+优势：
+数据隔离
+代码结构更清晰
+方便后续扩展用户Session
+4. Streaming流式输出
+普通返回
 用户请求
 
 ↓
 
-等待模型生成
+等待模型生成完成
 
 ↓
 
-一次性返回全部答案
-```
-
-## 流式返回
-
-```
+一次性返回完整答案
+缺点：
+用户需要等待较长时间。
+流式返回
 用户请求
 
 ↓
 
-生成一点
+模型生成一部分
 
 ↓
 
-返回一点
+立即返回
 
 ↓
 
 继续生成
-```
+效果类似 ChatGPT 的实时打字效果。
+5. Streaming实现
+DeepSeek调用：
+response = client.chat.completions.create(
 
-效果类似 ChatGPT 打字效果。
+    model="deepseek-chat",
 
----
+    messages=get_history(),
 
-# 4. Python生成器 yield
+    stream=True
 
+)
+关键参数：
+stream=True
+表示开启流式输出。
+6. Python生成器 yield
 流式输出核心：
-
-```python
 yield content
-```
-
 区别：
-
 return：
-
 一次返回结果。
-
 yield：
-
 不断产生数据。
-
 流程：
-
-```
 DeepSeek
 
 ↓
 
 chunk数据
+
+↓
+
+generate()
 
 ↓
 
@@ -332,54 +376,52 @@ StreamingResponse
 ↓
 
 客户端
-```
-
----
-
-# 5. SSE(Server-Sent Events)
-
+7. SSE(Server-Sent Events)
 SSE 是企业AI应用常用的流式通信方式。
-
 响应格式：
-
-```
 data: 第一段内容
 
 data: 第二段内容
 
 data: 第三段内容
-```
-
 FastAPI：
-
-```python
 StreamingResponse(
     generate(),
     media_type="text/event-stream"
 )
-```
+作用：
+让前端可以持续接收模型生成内容。
+8. 遇到的问题
+问题1：response未解析引用
+错误：
+for chunk in response:
+未解析的引用 'response'
+原因：
+generate函数作用域错误。
+解决：
+将generate函数放入chat_stream函数内部，使其可以访问response变量。
+问题2：Git push连接GitHub超时
+错误：
+Failed to connect to github.com:443
+原因：
+Git没有使用Clash代理。
+解决：
+配置Git代理：
+git config --global http.proxy http://127.0.0.1:7897
 
----
-
-# 当前项目能力
-
+git config --global https.proxy http://127.0.0.1:7897
+成功上传GitHub。
+当前项目能力
 目前已经实现：
-
 ✅ FastAPI后端服务
-
 ✅ DeepSeek大模型调用
-
 ✅ 多轮对话Memory
-
+✅ 面向对象Memory
 ✅ Streaming流式输出
-
 ✅ SSE接口
-
 ✅ Git版本管理
-
+✅ GitHub同步
 当前架构：
-
-```
 用户
 
 ↓
@@ -388,7 +430,7 @@ FastAPI
 
 ↓
 
-Chat Memory
+ChatHistory Memory
 
 ↓
 
@@ -401,24 +443,31 @@ Streaming SSE
 ↓
 
 返回结果
-```
-
----
-
-# Git提交记录
-
+Git提交记录
 当前版本：
-
-```
 init: FastAPI + DeepSeek聊天接口
 
 ↓
 
-docs: 添加README和学习笔记
+docs: 添加 README 和学习笔记
 
 ↓
 
 add chat memory and streaming response
-```
 
----
+↓
+
+docs:update learning notes for day1 and day2
+
+↓
+
+refactor chat history to class based memory
+Day2总结
+完成内容：
+理解大模型消息格式 system/user/assistant
+实现聊天上下文Memory
+学习Python生成器yield
+实现Streaming流式输出
+实现SSE通信
+使用面向对象方式重构Memory
+解决Git代理连接问题
