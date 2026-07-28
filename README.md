@@ -225,6 +225,7 @@ user
     "role":"user",
     "content":"你好"
 }
+```
 常见角色：
 system
 定义AI身份和行为规则。
@@ -240,7 +241,7 @@ user
 assistant
 模型回复：
 LangGraph是一个构建AI Agent的框架
-3. Memory面向对象重构
+# 3. Memory面向对象重构
 第一版Memory
 最初使用：
 history=[]
@@ -304,7 +305,7 @@ class ChatHistory:
 数据隔离
 代码结构更清晰
 方便后续扩展用户Session
-4. Streaming流式输出
+# 4. Streaming流式输出
 普通返回
 用户请求
 
@@ -332,7 +333,7 @@ class ChatHistory:
 
 继续生成
 效果类似 ChatGPT 的实时打字效果。
-5. Streaming实现
+# 5. Streaming实现
 DeepSeek调用：
 response = client.chat.completions.create(
 
@@ -346,7 +347,7 @@ response = client.chat.completions.create(
 关键参数：
 stream=True
 表示开启流式输出。
-6. Python生成器 yield
+# 6. Python生成器 yield
 流式输出核心：
 yield content
 区别：
@@ -376,7 +377,7 @@ StreamingResponse
 ↓
 
 客户端
-7. SSE(Server-Sent Events)
+# 7. SSE(Server-Sent Events)
 SSE 是企业AI应用常用的流式通信方式。
 响应格式：
 data: 第一段内容
@@ -391,7 +392,7 @@ StreamingResponse(
 )
 作用：
 让前端可以持续接收模型生成内容。
-8. 遇到的问题
+# 8. 遇到的问题
 问题1：response未解析引用
 错误：
 for chunk in response:
@@ -462,7 +463,7 @@ docs:update learning notes for day1 and day2
 ↓
 
 refactor chat history to class based memory
-Day2总结
+# Day2总结
 完成内容：
 理解大模型消息格式 system/user/assistant
 实现聊天上下文Memory

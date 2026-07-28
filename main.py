@@ -5,8 +5,9 @@ from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from openai import OpenAI
 
-from chat_history import add_message, get_history
+from chat_history import ChatHistory
 
+chat_history = ChatHistory()
 load_dotenv()
 app = FastAPI()
 
@@ -20,13 +21,13 @@ def home():
 
 @app.get("/chat_stream")
 def chat_stream(message: str):
-    add_message(
+    chat_history.add_message(
         "user",
         message
     )
     response=client.chat.completions.create(
         model="deepseek-chat",
-        messages=get_history(),
+        messages=chat_history.get_history(),
         stream=True
     )
     def generate():
@@ -37,10 +38,10 @@ def chat_stream(message: str):
                 answer+=content
                 yield f"data:{content}\n\n"
 
-            add_message(
-                "assistant",
-                answer
-            )
+        chat_history.add_message(
+            "assistant",
+            answer
+        )
     return StreamingResponse(
         generate(),
         media_type="text/event-stream",
