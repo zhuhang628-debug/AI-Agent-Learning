@@ -472,3 +472,309 @@ refactor chat history to class based memory
 实现SSE通信
 使用面向对象方式重构Memory
 解决Git代理连接问题
+
+# Day 3：LangChain 基础
+## 学习目标
+从直接调用大模型 API 升级到使用 LangChain 框架开发大模型应用。
+学习：
+* LangChain框架基础
+* ChatOpenAI模型封装
+* PromptTemplate提示词模板
+* Chain链式调用
+* LCEL表达式
+* Prompt Engineering基础
+---
+# 1. 为什么需要LangChain
+之前调用DeepSeek：
+```
+用户
+↓
+FastAPI
+↓
+OpenAI SDK
+↓
+DeepSeek API
+↓
+返回结果
+```
+这种方式可以完成基础聊天。
+但是实际AI应用需要更多能力：
+* Prompt管理
+* Memory管理
+* Tool调用
+* Agent流程控制
+如果全部自己开发，代码会越来越复杂。
+因此引入LangChain框架。
+---
+# 2. LangChain介绍
+LangChain 是一个用于构建大语言模型应用的开发框架。
+核心组件：
+```
+LLM
+↓
+Prompt
+↓
+Chain
+↓
+Memory
+↓
+Tool
+↓
+Agent
+```
+对应关系：
+| 原项目实现 | LangChain |
+|---|---|
+| OpenAI SDK调用 | ChatOpenAI |
+| history列表 | Memory |
+| system提示词 | PromptTemplate |
+| 多步骤流程 | Chain |
+| 函数调用 | Tool |
+| 自主决策 | Agent |
+---
+# 3. 安装LangChain
+安装：
+```bash
+pip install langchain langchain-openai
+```
+主要依赖：
+## langchain
+核心框架：
+负责：
+* Prompt
+* Chain
+* Agent
+## langchain-openai
+模型接口封装。
+由于DeepSeek兼容OpenAI接口：
+```
+LangChain
+↓
+ChatOpenAI
+↓
+DeepSeek API
+```
+---
+# 4. ChatOpenAI调用DeepSeek
+创建：
+`day3_langchain.py`
+代码：
+```python
+import os
+from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
+load_dotenv()
+llm = ChatOpenAI(
+    model="deepseek-chat",
+    api_key=os.getenv("DEEPSEEK_API_KEY"),
+    base_url="https://api.deepseek.com/v1"
+)
+response = llm.invoke(
+    "什么是AI Agent？"
+)
+print(response.content)
+```
+运行：
+```bash
+python day3_langchain.py
+```
+成功返回：
+```
+AI Agent是一种能够自主完成任务的智能系统...
+```
+---
+# 5. ChatOpenAI理解
+创建模型对象：
+```python
+llm = ChatOpenAI()
+```
+作用：
+将大模型接口封装成LangChain对象。
+之前：
+```python
+client.chat.completions.create()
+```
+现在：
+```python
+llm.invoke()
+```
+---
+# 6. invoke调用方式
+LangChain统一调用方式：
+```python
+invoke()
+```
+例如：
+```python
+response = llm.invoke(
+    "什么是LangChain？"
+)
+```
+返回：
+```python
+AIMessage
+```
+不是普通字符串。
+获取内容：
+```python
+response.content
+```
+---
+# 7. PromptTemplate（提示词模板）
+## 问题
+直接调用：
+```python
+llm.invoke(
+"什么是AI Agent？"
+)
+```
+Prompt写死，不方便复用。
+## 解决方案
+使用模板：
+```
+固定提示词
++
+用户输入
+=
+最终Prompt
+```
+例如：
+```
+你是一名AI Agent开发导师。
+请回答：
+{question}
+```
+其中：
+```
+{question}
+```
+是变量。
+---
+# 8. 创建PromptTemplate
+代码：
+```python
+from langchain_core.prompts import ChatPromptTemplate
+prompt = ChatPromptTemplate.from_template(
+    """
+你是一名AI Agent开发导师。
+请回答：
+{question}
+"""
+)
+```
+调用：
+```python
+message = prompt.invoke(
+    {
+        "question":"什么是LangGraph？"
+    }
+)
+```
+作用：
+自动替换模板变量。
+---
+# 9. Chain链式调用
+Prompt负责：
+```
+组织问题
+```
+LLM负责：
+```
+生成答案
+```
+组合：
+```
+Prompt
+↓
+LLM
+↓
+Answer
+```
+代码：
+```python
+chain = prompt | llm
+```
+其中：
+```
+|
+```
+表示管道连接。
+---
+# 10. LCEL表达式
+LangChain Expression Language（LCEL）
+用于连接不同组件。
+例如：
+```python
+chain = prompt | llm
+```
+执行流程：
+```
+用户输入
+↓
+Prompt模板格式化
+↓
+LLM生成回答
+↓
+返回结果
+```
+---
+# 11. 手动输入问题
+之前：
+```python
+question="什么是LangGraph？"
+```
+问题固定。
+修改：
+```python
+question=input("请输入你的问题：")
+```
+实现：
+```
+用户输入
+↓
+PromptTemplate
+↓
+Chain
+↓
+DeepSeek
+↓
+返回答案
+```
+---
+# 12. 当前项目能力
+目前已经实现：
+✅ FastAPI后端服务
+✅ DeepSeek大模型调用
+✅ Chat Memory
+✅ Streaming流式输出
+✅ SSE响应
+✅ 面向对象Memory
+✅ LangChain环境搭建
+✅ ChatOpenAI调用
+✅ PromptTemplate
+✅ Chain链式调用
+当前架构：
+```
+用户
+↓
+PromptTemplate
+↓
+LangChain Chain
+↓
+ChatOpenAI
+↓
+DeepSeek LLM
+↓
+返回结果
+```
+---
+# 13. Day3总结
+今天学习内容：
+* 理解为什么需要LangChain
+* 学习LangChain核心结构
+* 使用ChatOpenAI调用DeepSeek
+* 理解invoke调用方式
+* 学习PromptTemplate
+* 学习变量替换
+* 学习Chain链式调用
+* 理解LCEL表达式
