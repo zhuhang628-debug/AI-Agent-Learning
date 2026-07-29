@@ -778,3 +778,382 @@ DeepSeek LLM
 * 学习变量替换
 * 学习Chain链式调用
 * 理解LCEL表达式
+
+# Day 4：LangChain Agent开发
+## 学习目标
+从LangChain Chain进入AI Agent开发。
+学习：
+* Agent基本概念
+* Chain和Agent区别
+* Tool工具调用
+* AgentExecutor
+* 多Tool Agent
+* Agent Memory
+目标：
+实现一个具备工具调用和记忆能力的AI Agent。
+---
+# 1. 什么是Agent
+Day3学习的Chain：
+```
+用户
+↓
+Prompt
+↓
+LLM
+↓
+回答
+```
+Chain流程固定，只能完成固定任务。
+但是实际AI应用需要：
+* 查询数据库
+* 调用API
+* 搜索信息
+* 执行计算
+因此需要Agent。
+Agent：
+```
+用户
+↓
+Agent
+↓
+分析任务
+↓
+调用工具
+↓
+返回结果
+↓
+生成答案
+```
+Agent本质：
+```
+LLM + Tool + 执行流程
+```
+---
+# 2. Chain和Agent区别
+## Chain
+特点：
+* 流程固定
+* 不会自主选择
+* 不调用外部工具
+流程：
+```
+用户
+↓
+Prompt
+↓
+LLM
+↓
+答案
+```
+## Agent
+特点：
+* 流程动态
+* 可以自主选择工具
+* 可以完成复杂任务
+流程：
+```
+用户
+↓
+Agent
+↓
+LLM判断
+↓
+Tool调用
+↓
+结果返回
+↓
+最终回答
+```
+---
+# 3. Tool工具
+Tool是Agent连接外部能力的方法。
+LLM负责：
+```
+理解问题
+生成语言
+```
+Tool负责：
+```
+执行任务
+获取数据
+```
+例如：
+* 天气查询
+* 搜索
+* 计算
+---
+# 4. 创建Tool
+代码：
+```python
+from langchain_core.tools import tool
+@tool
+def search_weather(city:str):
+    """
+    查询城市天气
+    """
+    return f"{city}今天晴天，温度25度"
+```
+@tool作用：
+将普通Python函数转换成LangChain Tool。
+Agent可以识别：
+```
+工具名称
+工具描述
+参数
+```
+---
+# 5. Tool调用流程
+用户：
+```
+上海今天的天气怎么样？
+```
+LLM分析：
+```
+需要天气信息
+```
+生成：
+```python
+tool_calls=[
+{
+"name":"search_weather",
+"args":{
+"city":"上海"
+}
+}
+]
+```
+流程：
+```
+用户
+↓
+LLM判断
+↓
+Tool调用
+↓
+返回结果
+```
+---
+# 6. AgentExecutor
+手写Agent流程：
+```
+LLM判断
+↓
+调用Tool
+↓
+获得结果
+↓
+再次调用LLM
+↓
+生成回答
+```
+工具多时流程复杂。
+LangChain提供：
+```
+AgentExecutor
+```
+自动管理：
+```
+思考
+↓
+调用工具
+↓
+观察结果
+↓
+生成回答
+```
+代码：
+```python
+agent=create_tool_calling_agent(
+    llm,
+    tools,
+    prompt
+)
+executor=AgentExecutor(
+    agent=agent,
+    tools=tools,
+    verbose=True
+)
+```
+---
+# 7. 多Tool Agent
+原本：
+```
+Agent
+↓
+天气Tool
+```
+升级：
+```
+Agent
+↓
+----------------
+天气Tool
+计算Tool
+----------------
+```
+新增计算工具：
+```python
+@tool
+def calculator(expression:str):
+    """
+    数学计算工具
+    """
+    result=eval(expression)
+    return f"计算结果:{result}"
+```
+测试：
+```
+上海天气怎么样？
+↓
+search_weather
+```
+```
+2*3是多少？
+↓
+calculator
+```
+说明Agent可以根据问题自主选择工具。
+---
+# 8. Agent Memory
+普通Agent：
+```
+用户：我叫朱航
+AI：你好朱航
+用户：我叫什么？
+AI：不知道
+```
+原因：
+没有保存历史消息。
+加入Memory：
+```
+用户
+↓
+Memory保存
+↓
+Agent读取历史
+↓
+LLM回答
+```
+---
+# 9. 创建AgentMemory
+代码：
+```python
+from langchain_core.messages import HumanMessage,AIMessage
+class AgentMemory:
+    def __init__(self):
+        self.messages=[]
+    def add_user_message(self,content):
+        self.messages.append(
+            HumanMessage(content=content)
+        )
+    def add_ai_message(self,content):
+        self.messages.append(
+            AIMessage(content=content)
+        )
+    def get_messages(self):
+        return self.messages
+```
+---
+# 10. Memory测试
+保存：
+```
+HumanMessage:
+我叫朱航
+```
+保存：
+```
+AIMessage:
+你好朱航
+```
+再次输入：
+```
+我叫什么？
+```
+AI：
+```
+你叫朱航
+```
+说明Memory已经接入Agent。
+---
+# 11. 当前项目架构
+```
+用户
+↓
+AgentExecutor
+↓
+----------------
+Memory
+Tools
+----------------
+↓
+LLM
+↓
+DeepSeek
+↓
+最终回答
+```
+---
+# 12. Day4完成能力
+目前掌握：
+✅ LangChain Agent基础
+✅ Tool工具开发
+✅ @tool装饰器
+✅ Tool Calling
+✅ AgentExecutor
+✅ 多Tool Agent
+✅ Agent Memory
+对应AI Agent实习要求：
+```
+LangChain框架
+Agent开发
+大模型应用开发
+```
+---
+# 13. 遇到的问题
+## calculator返回None
+原因：
+函数没有return。
+错误：
+```python
+print(result)
+```
+正确：
+```python
+return result
+```
+## Memory没有get_messages方法
+原因：
+方法名称错误：
+```python
+get_message()
+```
+修改：
+```python
+get_messages()
+```
+---
+# Day4总结
+今天完成：
+```
+Chain
+↓
+Tool
+↓
+Agent
+↓
+Multi Tool
+↓
+Memory Agent
+```
+AI Agent核心结构：
+```
+LLM
++
+Tools
++
+Memory
++
+AgentExecutor
+=
+AI Agent
+```
