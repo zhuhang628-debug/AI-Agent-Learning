@@ -5,7 +5,7 @@ from langchain_classic.agents import create_tool_calling_agent, AgentExecutor
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
-from day5_travel_agent.tools import search_weather, search_attraction
+from tools import search_weather, search_attraction
 
 load_dotenv()
 
@@ -13,6 +13,7 @@ llm=ChatOpenAI(
     model="deepseek-chat",
     api_key=os.getenv("DEEPSEEK_API_KEY"),
     base_url="https://api.deepseek.com/v1",
+    streaming=True,
 )
 tools=[
     search_weather,
