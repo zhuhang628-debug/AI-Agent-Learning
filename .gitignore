@@ -21,3 +21,8 @@ venv/
 *.jpg
 *.jpeg
 *.gif
+
+
+# SQLite databases
+*.db
+*.sqlite3
