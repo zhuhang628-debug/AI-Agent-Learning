@@ -26,3 +26,7 @@ venv/
 # SQLite databases
 *.db
 *.sqlite3
+
+
+*.log
+**/logs/
