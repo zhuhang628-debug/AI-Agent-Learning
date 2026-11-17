@@ -27,6 +27,6 @@ venv/
 *.db
 *.sqlite3
 
-
+#Logs
 *.log
 **/logs/
